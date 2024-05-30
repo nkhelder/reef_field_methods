@@ -1,0 +1,187 @@
+---
+title: "GCRMN_Data_Tutorial"
+author: "Noelle Helder"
+date: "5/27/2024"
+output: html_document
+---
+This tutorial will build on the skills we learned in the Data Vis tutorial. We will take it a step further, combining the steps into a function to automate this proces to work on multiple fish surveys at once! If you don't want to try and write your own functions and have cleaned your data in Excel, you can jump down to the 'Visualization' section to look at the `ggplot2` code. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+# Define our Fish Data Cleaning Functions
+
+The real power of programming for data analysis comes in when you have to repeat tasks multiple times. Doing this manually in Excel creates lots of opportunities for error. Copying and pasting data is a great way to create problems for yourself later. Programming out your data cleaning steps means that each step is well-documented so you always know what you did *without ever changing the original data*. This is key for **reproducible research**, because science is only valid to the extent that someone else could repeat it.
+
+Last tutorial, we used a bunch of `functions` from packages in the `tidyverse` to clean our data. For example, we used the function `mutate` to change column names or `range` to identify the spread of a variable. 
+
+```{r, echo=FALSE}
+# Function to clean and reshape metadata
+clean_and_reshape_metadata <- function(metadata, file_id) {
+ 
+  m <- metadata[,1:2] %>%
+    pivot_wider(names_from = ...1, values_from = ...2) %>% 
+    mutate(ID = file_id)
+  return(m)
+}
+
+# Function to clean and process data
+clean_and_process_data <- function(data, file_id) {
+  # Assign column names to the data
+  col_names <- c("Species_Class", paste("Transect_", 1:5, sep = ""))
+  colnames(data) <- col_names
+  
+  # Separate values in the first column into "Species" and "Class"
+  data2 <- data %>%
+    separate(Species_Class, into = c("Species", "Class"), sep = " ", remove = FALSE)
+  
+  # Convert columns to appropriate data types
+  data2 <- data2 %>%
+    mutate(across(starts_with("Transect_"), as.numeric)) %>%
+    mutate(Species = as.factor(Species),
+           Class = as.factor(Class))
+  
+  # Step 5: Reshape data to long format for visualization
+  data_long <- data2 %>%
+    pivot_longer(cols = starts_with("Transect_"), names_to = "Transect", values_to = "Count") %>%
+    mutate(ID = file_id)
+  
+  return(data_long)
+}
+
+# Function to process each file
+process_file <- function(file, file_id) {
+  # Read the data
+  df <- read_excel(file, col_names = FALSE)
+  
+  # Separate metadata and data
+  metadata <- df[1:4, ]
+  data <- df[-(1:5), ]
+  
+  # Clean and reshape metadata
+  cleaned_metadata <- clean_and_reshape_metadata(metadata, file_id)
+  
+  # Clean and process data
+  processed_data <- clean_and_process_data(data, file_id)
+  
+  return(list(metadata = cleaned_metadata, data = processed_data))
+}
+
+```
+
+
+
+```{r}
+# Set your working directory
+setwd("C:/Users/nhelder/Documents/projects/Union_2024/GCRMN_data_vis")
+
+file_paths <- list.files(path = "Fish_Data/", pattern = "*.xlsx", full.names = TRUE)
+
+
+# Initialize empty lists to store the results
+metadata_list <- list()
+data_list <- list()
+
+# Loop through each file, read the data, and apply the function
+for (i in seq_along(file_paths)) {
+  file <- file_paths[i]
+  results <- process_file(file, file_id = i)
+  
+  metadata_list <- append(metadata_list, list(results$metadata))
+  data_list <- append(data_list, list(results$data))
+}
+
+# Combine all the results into two separate dataframes
+final_metadata_df <- bind_rows(metadata_list)
+final_data_df <- bind_rows(data_list)
+
+# View the final combined dataframes
+print("Final Metadata Dataframe:")
+print(final_metadata_df)
+
+```
+
+```{r}
+
+print("Final Data Dataframe:")
+print(final_data_df)
+```
+```{r}
+df <- final_data_df %>% left_join(final_metadata_df)
+df
+write.csv(df, "fake_fish_surveys.csv", row.names = FALSE)
+```
+
+```{r}
+ggplot(df) +
+  aes(x=Species, 
+      y=Count, 
+      fill=Depth) +
+  geom_bar(position="dodge", stat="identity") +
+  facet_wrap(~Site) +
+  # add and edit lables, including titles and captions with labs(). 
+  labs(x="Family", 
+       y="Number Observed", 
+       title="Title for my Very Important Data",
+       subtitle = "Subtitle for my very important fish count data") +
+  # add a generic theme
+  theme_bw() + 
+  # modify specific parts of the theme
+  theme(legend.position="bottom", # move the legend below the plot
+        # get rid of the legend title
+        # legend.title=element_blank(),
+        # get rid of the x-axis title
+        axis.title.x=element_blank(),
+        # get rid of the x-axis labels
+        # axis.text.x=element_blank(),
+        # get rid of the x-axis tick marks
+        axis.ticks.x=element_blank())
+```
+
+```{r}
+# use summarize to calculate the average for each transect
+df$Count[is.na(df$Count)] <- 0
+summary <- df %>% 
+  group_by(Species, Site, Depth) %>% 
+  summarize(avg=mean(Count),
+            sd = sd(Count))
+summary
+```
+I can specify colors for grouping variables for consistency. 
+```{r}
+group.colors <- c('15 m' = "#66E6FF", '30 m'= "#007A99")
+```
+
+```{r}
+ggplot(summary) +
+  aes(x=Species, 
+      y=avg, 
+      fill=Depth) +
+  geom_bar(position="dodge", stat="identity") +
+  geom_errorbar(aes(ymin =avg, ymax=avg+sd), width=0.1,  position=position_dodge(.9)) +
+ #  geom_errorbar(aes(ymin = avg, ymax = avg + sd), 
+  #               width = 0.2) +  # Add error bars
+  facet_grid(~Site) +
+  # add and edit lables, including titles and captions with labs(). 
+  labs(x="Family", 
+       y="Abundance", 
+       title="Title for my Very Important Data",
+       subtitle = "Subtitle for my very important fish count data") +
+  # add a generic theme
+  theme_classic() + 
+  scale_fill_manual(values=group.colors) +
+  # modify specific parts of the theme
+  theme(legend.position="bottom", # move the legend below the plot
+        # get rid of the x-axis title
+        axis.title.x=element_blank(),
+        # Change x-axis label size so that it all fits
+        axis.text.x =element_text(size = 8),   
+        # get rid of the x-axis tick marks
+        axis.ticks.x=element_blank())
+
+```

@@ -1,0 +1,50 @@
+---
+title: "Open-Source Cartography with QGIS"
+author: "Noelle Helder"
+date: "5/27/2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+In this tutorial, we are going to learn how to make a simple map of our study area using open-source tools!
+
+We will discuss: 
+1. The basic types of spatial data
+2. Importing and visualizing data in QGIS
+3. Making and exporting a map
+
+## An Introduction to Spatial Data
+### Types of Spatial Data
+
+Data are considered "spatial" when they include *location-specific information* attached to a piece of information. This is usually in the form of geographic coordinates (lat/long) that tell us where on the surface of the earth that piece of information is located. 
+
+Data are not "spatial" if they do not have this information attached to it, even if the data represents what we would know of as a "place". For example, our GCRMN survey data has a "Site Name" attached to it - does this mean it is spatial? Nope! Place names only become *spatial information* when we attach coordinates to it. You would need an additional layer of information (coordinates from a GPS, for example) to turn that survey location into someting spatial that we could add to a map. 
+
+
+**Vectors**
+**Rasters (or Images)** 
+
+### Geographic Information Systems (GIS) 
+
+A GIS is simply a **database that we use to work with spatial data**. A GIS has unique capabilities that allow us to handle the complexities of spatial data types and to visualize them effecitively. 
+
+Many things can be a GIS (and, in fact, the term GIS is a bit outdated now because of this). You can use coding platforms (including R and Python) as a GIS. You might have heard of ArcGIS (which is a for-profit software created by Esri), which is arguably the most popular software. Licenese for ArcGIS are **incredibly expensive** (unless you are a student at a university- then congrats! You're in luck. But as soon as you leave the university you can by goodbye to your ArcGIS data, licenses, and workflows that you developed.)
+
+Another incredibly powerful software for mapping applications is QGIS. QGIS is an *free, open-source* application that has (nearly) all of the capabilites of ArcGIS. 
+
+We will walking through the very basics of QGIS to make a simple field map, but you can do oh so much more with this tool! I will link a bunch of my favorite mapping resources at the end of this tutorial if you want to deep dive into the world of cartography. 
+
+## Getting Started 
+
+If you haven't already, you need to [download and install QGIS](www.qgis.com). 
+
+
+
+
+
+
+
+
