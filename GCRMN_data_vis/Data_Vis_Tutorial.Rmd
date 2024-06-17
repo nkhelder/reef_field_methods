@@ -1,0 +1,798 @@
+---
+title: "Intro to Data Visualization in R for Coral Reef Ecology"
+author: "Noelle Helder"
+date: "2024-05-26"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T,
+                      results = "hide")
+
+```
+
+### Table of contents
+1. [Introduction](#introduction)
+2. [Our Data Cleaning Game Plan](#2)
+3. [Bringing Data into R](#import)
+4. [Data Visualization with ggplot2](#visualize)
+5. [Cleaning Ecological Data](#clean)
+6. [Data Manipulation](#manipulation)
+
+
+
+This tutorial will introduce you to the world of data wrangling and visualization using the powerful statistical programming language R. We will focus on applying the principles of *tidy data*, making your data easy to work with and analyze using widely-used packages. 
+
+
+### Introduction <a name="introduction"></a>
+**What is Tidy Data?**
+
+"Tidy data" is a specific way to organize and format data for repeatable analysis in R. It takes a bit of work up front to "clean" or "wrangle" your data, but it is well worth the effort! Tidy data follows a simple and consistent structure that makes your data easier to analyze and visualize:
+
+* **Each variable forms a column.**  A variable is a piece of information you are measuring or recording. For example, in a coral reef survey, variables could include the `Date` of the survey, the `Site` location, the `Depth` of the survey, the `Species` of coral recruits, or the `Family` of fish observed.
+* **Each observation forms a row.**  Each row in your data represents a single observation. For example, this might be data on one fish family, or one coral recruit, etc. 
+* **Each  value has its own cell.** Only one bit of information is stored in each cell! 
+
+![Figure 1: An overview of the tidy data principles](C:/Users/noell/reef_field_methods/GCRMN_data_vis/Tutorial_Imgs/tidy.png)
+
+**Before we get started, let's get a few things to set up**
+
+Before you get started on any data project, spend a few minutes thinking about how you will store your data! For this tutorial, all corresponding data sheets should live inside a sub-folder. This will make it easy for our scripts to run and import all of the correct data each time. 
+
+*Note: spaces can be annoying in folder paths. I would recommend using _ or - to separate words in your file* 
+
+
+### Our data cleaning game plan <a name="2"></a>
+You have been conducting coral reef surveys using the GCRMN-Caribbean protocols, which are standardized surveys used globally in reef monitoring. For this tutorial, we will start with looking at the **fish survey data** because it is the most complicated to clean! 
+
+Your fish survey data is stored in an Excel spreadsheet (similar to the provided template), but it needs some cleaning and organization before you can analyze and visualize it (or, make it 'Tidy'). This spreadsheet, like almost all ecological data you will encounter, is formatted for easy-interpretation by humans. Our task is to take human-readable data and make it easily interpretable for computers. 
+
+Namely, we need to:
+
+1. **Pull out the survey header information** from the data file 
+2. **Make sure each column only contains one variable**: the first column in our spreadsheet includes fish family AND size class information. We want this information to be in separate columns becuase this represents 2 different variables. 
+3. **Make each variable a column**: We currently have 5 different transects,  each in their *own columns*. Instead, we want 1 column called "Transect" with different levels for each transect. 
+
+
+Other common cleaning tasks include checking for missing values, setting data types, and identifying outliers, typos, or other potential issues. 
+
+Typos matter! R is not that smart - it will not recognize that `parrotfish` and `Parrotfish` are the same fish family. Nor will it know that `Chantale + Noelle` refers to the same survey team as `Noelle, Chantale` or `NH + CB`, etc. It's very important to pick consistent formatting and spelling for all of your data entry tasks. 
+
+For our data vis exploration, we will use a pre-cleaned dataset to look at making graphs in R. When you do this for your assignment, you can either manually clean (organize and reformat) your data in Excel or using the cleaning code I have later on in this tutorial. Either way, when you go to visualize your data, you need to use a *cleaned data set*. 
+
+**Install and Load the Necessary Packages**
+
+You'll need to install and load a few R packages to work with your data.
+
+Packages are collections of code tools with specific functions that we can add to R. A package directory is its `library`. Hence, we read packages into R with the `library()` function Think of a package like the tool bag you might grab for a specific job. The individual tools inside each package are called *functions*. These are the commands we use to do stuff in R (coding algorithms!). 
+
+Packages need to be installed only once on your computer, but must be imported (e.g., using `library(package_name)`) every time you open R. These lines of code pretty much always go at the very top of the script. 
+```{r}
+# If you already have these packages installed, you can skip the line of code above
+# and instead just import each library (see next code chunk). 
+
+# Install the necessary packages (only need to do this on your computer ONE TIME) 
+# install.packages(c("tidyverse", "readxl"))
+
+```
+
+```{r message=FALSE, warning=FALSE}
+# Import the necessary libraries using library(package_name)
+library(tidyverse)
+library(readxl)
+```
+
+### Bringing data into R <a name="import"></a>
+
+The first thing we need to do is get our data into R to use it. But where is our data on our computer? R doesn't just know automatically - we have to *specifically tell it where things are*. We tell R where to look by setting a `directory`. The directory is just a path to a folder where your data is stored. Your computer has a default path automatically. To see what the default path is, we can run the following code: 
+
+```{r}
+# See your current directory (i.e., where R is automatically looking)
+current_dir <- getwd()
+
+# Prints the file path to your default working directory. 
+print(current_dir)
+```
+
+To change this, we tell R where to look using the `setwd` function with a new file path. This will become second nature to you, and will be something you do **each time you start R**.
+
+```{r}
+# Example: 
+# dir = 'YOUR_PATH_HERE'
+dir = 'C:/Users/nhelder/Documents/projects/Union_2024/GRCMN_data_vis'
+
+# Manually set your working directory to your project folder.
+# Uncomment and run the line below
+# setwd(dir)
+```
+
+Now, let's import your data into R. 
+
+As ecologists, we most commonly work with *tabular data* (like a .csv file or any kind of spreadsheet that you might work with in Excel). Today we will work with a .csv file, so will use the function `read_csv`. There is also a `read_excel` function that, you guessed it, we would use for an Excel spreadsheet (.xlsx) file. Of course there are numerous other types of data we might read in, but we will keep it simple for now!
+
+```{r message=FALSE}
+# Import an example fish data sheet (replace anything inside quotes with the actual name of the file in your folder). My data is inside a folder called 'Fish_Data', so I include that in my call. 
+fish_load <- read_csv("cleaned_fake_fish_surveys.csv")
+```
+
+You should see a new variable called `fish` appear in your Environment panel
+on the upper right hand side of your screen. Click on this variable, and you will
+notice that a new tab opens up so you can look at your data just like a spreadsheet.
+
+It's a good  idea to make sure you understand how the data was collected
+before getting started. An in-depth understanding will help you make good decisions when 
+analysing data and help you quickly identify data entry errors or discrepancies. Just looking at the information in the Environment, you can see that this spreadsheet has 340 observations (rows) of 10 variables (columns). 
+
+
+There are a lot of ways to look at your data to get more information using some basic functions that are available in R. For example, `head(name_of_data)` will show you the first 6 rows of your data set. 
+
+```{r, results="markup"}
+# View the first 6 rows of data
+head(fish_load)
+```
+
+```{r, results="markup"}
+# View the last 6 rows of data
+tail(fish_load)
+```
+
+Or, by just calling the object name, I get a nice print out of the data in an easily-interpretable table. 
+```{r}
+fish_load
+
+```
+
+## Visualize data with ggplot2<a name="visualize"></a>
+`ggplot2` is an amazing package for data visualization in R. You can easily customize and develop maps, networks, and simple graphs using a standard language.This package bases its visualizations on a series of elements joined together by a `+` sign. The elements are layered, so whatever comes first goes underneath. 
+
+The ggplot2 package allows you to create data visualizations based on the grammar of graphics which is made up of 7 layers.
+
+1. `Data` — The data you are interested in visualizing
+2. `Aesthetics` — The scales you will map the data, which is your x and y-axis.
+3. `Geometry` — This is where you define the kind of shape you want your visualization to have.
+4. `Facets` — This is the process of splitting your plot into various subplots to get a clearer view.
+5. `Statistics` — In this layer, you define statistical summaries or trends in the data.
+6. `Coordinates` — This is where you describe your plotting space.
+7. `Themes` — This is where you can customize non-data elements in your data such as font, graph fill and outline, and so on.
+
+For additional inspiration for making cool figures in R, check out [the R graphics gallery](https://r-graph-gallery.com/ggplot2-package.html). You can also look at the [cookbook for R](https://r-graphics.org/chapter-ggplot2). 
+
+Once again, lets look at our data and think about what we want to plot! Remember, `ggplot2` needs data that is 'cleaned' (i.e., formatted in the specific way we just discussed). So we will import a cleaned dataset, summarize key data, and visualize it with `ggplot2`. 
+
+Let say I am interested in seeing if fish community *abundances* changed across *depths* at different *sites*. Let's use some fake data that we cleaned using this tutorial (or manually if you prefer). We cleaned each survey and joined them all together into one large data frame. 
+
+This will require us to: 
+1. Summarize data from multiple surveys;
+2. Add error bars to our graph;
+3. Change colors based on data properties; 
+4. Make it pretty! 
+
+Let's get started! 
+
+
+First, make another copy of our data that we can play with. Give it an informative, simple name. 
+```{r}
+#to make a copy of something, you just do: new_data <- old_data
+fish_data <- fish_load
+```
+
+Let's explore this dataset a bit. If we want to get data from specific columns in R, we use the `$` to access them in the format `dataframe_name$column_name`. Maybe we want to know what all depths were surveyed in this data. We can use `unique()` to get that information. 
+```{r}
+unique(fish_data$Depth)
+```
+Or if we want to see which sites we visited: 
+```{r}
+unique(fish_data$Site)
+```
+To visualize data with error bars in R, we need to calculate the standard deviation first. Remember that we are visualizing fish family *abundances* (counts) at different *depths* and *sites*. That means we need to calculate the SD based on the observations within those groups (family, depth, and site). 
+
+We could use the `mean` function to calculate the average fish counts like this. 
+```{r}
+# Calculate the average survey counts
+avg <- mean(fish_data$Count)
+
+# Print the average count - on average we counted 3.12 fish. 
+avg
+```
+
+But, just like in Excel, you want the average for specific groups of observations in our dataset, not the average for every single cell all together. We use the handy functions `group_by` and `summarize` together to calculate different statistics for our data. Note that we use what's called a "pipe" operator ` %>% `. This is a tool in R to link together multiple lines of code: whatever is in front of the pipe is processed, then that is passed on to whatever is after the pipe. 
+
+Here, we take our dataset `fish`. Then, we use the %>% to 'pass' the data to the next function: `group_by`. We group the `fish` data based on the 3 variables we specify, then we pass that grouped data to `summarize` to calculate statistics. 
+```{r}
+# First, let's make sure that any survey without fish are all entered as 0s (and not missing data)
+fish_data$Count[is.na(fish_data$Count)] <- 0
+
+summary <- fish_data %>% 
+  # Group your data by variables of interest. Here, we have 3 grouping variables. 
+  group_by(Family, Site, Depth) %>% 
+  # Calculate group mean and standard deviation
+  summarize(avg=mean(Count),
+            sd = sd(Count))
+
+# Print the summary to check it - should have an average and SD value for each family-site-depth combination
+summary
+```
+Time to use `ggplot2`! We will start with the basics. 
+
+Regardless of the plot you want to build, all `ggplot` code follows the same structure.
+```{r}
+ggplot(fish_data,
+       aes(
+         x = Family,
+         y = Count
+       ))
+```
+
+The ggplot() function is where you pass in the data and aesthetics, the data argument takes in the data you are visualizing which in this case it’s the fish data set, while the mapping argument takes in the x and y axis and also if you want to have a variable as a fill, which I will explain later. If we run this code, we just get a grey plot outline. The next step is to add the type of visualization you want to plot with a `+`. In this case, we want to make a bar graph so we use `geom_bar(stat="identity")`. 
+
+```{r, warning=FALSE, message=FALSE}
+ggplot(fish_data,
+       aes(
+         x = Family,
+         y = Count
+       )) +
+  geom_bar(stat="identity")
+```
+This is the exact same structure we would follow for any plot, but exchange our `geometry` call for something else, like `geom_scatter()` for a scatterplot, `geom_boxplot()` for a boxplot, etc. 
+Hint: type `geom_` then tab to view all of the suggested options for types of graphs to create. 
+
+In the coming sections, we will see how to continue to customize your plots building on this basic structure.The plot looks dull, let’s make it colorful by adding the fill argument to the `aes()` function.
+
+```{r, warning=FALSE, error=FALSE}
+ggplot(fish_data,
+       aes(
+         x = Family,
+         y = Count,
+         # specify a column to color by
+         fill = Family
+       )) +
+  geom_bar(stat="identity")
+```
+
+What happens if we swap the columns for our x and y axes? Note the difference in this code vs. the chunk just before it. 
+
+```{r}
+ggplot(fish_data,
+       aes(
+         x = Count,
+         y = Family,
+         # specify a column to color by
+         fill = Family
+       )) +
+  geom_bar(stat="identity")
+```
+You can easily swap the axis but just specifying what column you want on the x or y axis.
+
+Let's say we want to look at how fish counts for each family varied by depth. We could do this a few ways. Here, we can make a stacked bar chart to compare categorical variables. 
+```{r}
+ggplot(fish_data,
+       aes(
+         x = Depth,
+         y = Count,
+         # specify a column to color by
+         fill = Family
+       )) +
+  geom_bar(stat="identity")
+```
+A better way to visualize this data might be using a grouped bar chart. We can add `position="dodge"` to our `geom_bar()` call to group each bar together. 
+```{r}
+# We first say what data we are plotting
+ggplot(summary) +
+  # then we specify what columns go on the x and y axis. 
+  aes(x=Family, 
+      y=avg, 
+      # we specify how we want to color the data
+      fill=Depth) +
+  # we set the type of plot we want to make
+  geom_bar(position="dodge", stat="identity")
+
+```
+
+The plots we have created so far don't have titles or good labels. 
+
+We can customize the plot axis and titles and give the names you want using this: 
+* `ggtitle` - for title label
+* `xlab` - for x-axis label
+* `ylab` - for y-axis label
+
+```{r}
+# We first say what data we are plotting
+ggplot(summary) +
+  # then we specify what columns go on the x and y axis. 
+  aes(x=Family, 
+      y=avg, 
+      # we specify how we want to color the data
+      fill=Depth) +
+  # we set the type of plot we want to make
+  geom_bar(position="dodge", stat="identity") +
+  # plot title
+  ggtitle("Average fish counts across different depths") +
+  # x axis label
+  xlab("Fish Family") +
+  # y axis label
+  ylab("Average Count")
+```
+
+Faceting is a term we use to split plots into various sub-plots so you can look at data across different categories. We can use `facet_wrap()` or `facet_grid()` to separate our data for visualization. Let's make separate plots for each site for easy comparison. 
+
+
+```{r}
+# We first say what data we are plotting
+ggplot(summary) +
+  # then we specify what columns go on the x and y axis. 
+  aes(x=Family, 
+      y=avg, 
+      # we specify how we want to color the data
+      fill=Depth) +
+  # we set the type of plot we want to make
+  geom_bar(position="dodge", stat="identity") +
+  # set a title
+  ggtitle("Average fish counts across different depths") +
+  # set x axis label
+  xlab("Fish Family") +
+  # set y axis label
+  ylab("Average Count") + 
+  # split by Sites
+  facet_grid(~Site)
+```
+The ~ tells `ggplot` that we want to split the data by the variable `Site`. 
+
+We also want to add error bars to our plot. 
+```{r}
+# We first say what data we are plotting
+ggplot(summary) +
+  # then we specify what columns go on the x and y axis. 
+  aes(x=Family, 
+      y=avg, 
+      # we specify how we want to color the data
+      fill=Depth) +
+  # we set the type of plot we want to make
+  geom_bar(position="dodge", stat="identity") +
+  # add one-sided error bars, set the width, change the position to match the geom_bar position. 
+  geom_errorbar(aes(ymin =avg, ymax=avg+sd), width=0.1,  position=position_dodge(.9)) + 
+  # set a title
+  ggtitle("Average fish counts across different depths") +
+  # set x axis label
+  xlab("Fish Family") +
+  # set y axis label
+  ylab("Average Count") + 
+  # split by Sites
+  facet_grid(~Site)
+```
+For this example, notice that we only have one-sided error bars. That is just because my fake data has big errors so the bars look crazy. To add both sides to your plot, your code would be: 
+
+`geom_errorbar(aes(ymin=avg-sd, ymax=avg+sd), width=0.1,  position=position_dodge(.9)) +`. 
+
+To further customize our plot, we can modify things using `themes`. A few things I don't like about this plot are that the x-axis labels are squished together, and I don't like the x-axis tick marks. We remove this via `theme`.
+
+```{r}
+# We first say what data we are plotting
+ggplot(summary) +
+  # then we specify what columns go on the x and y axis. 
+  aes(x=Family, 
+      y=avg, 
+      # we specify how we want to color the data
+      fill=Depth) +
+  # we set the type of plot we want to make
+  geom_bar(position="dodge", stat="identity") +
+  # add one-sided error bars, set the width, change the position to match the geom_bar position. 
+  geom_errorbar(aes(ymin =avg, ymax=avg+sd), width=0.1,  position=position_dodge(.9)) + 
+  # set a title
+  ggtitle("Average fish counts across different depths") +
+  # set x axis label
+  xlab("Fish Family") +
+  # set y axis label
+  ylab("Average Count") + 
+  # split by Sites
+  facet_grid(~Site) +
+  theme(# Change x-axis label size so that it all fits
+        axis.text.x =element_text(size = 7),   
+        # get rid of the x-axis tick marks
+        axis.ticks.x=element_blank())
+
+```
+Looking good! I want to choose prettier colors to indicate my depths. I can manually set these by first specifying which colors I want for each group, then assigning these using `scale_fill_manual()`. 
+
+To specify a specific color for each depth: 
+```{r}
+# set colors using hex codes for each depth class 
+depth_colors <- c('15 m' = "#66E6FF", '30 m'= "#007A99")
+```
+
+```{r}
+ggplot(summary) +
+  # then we specify what columns go on the x and y axis. 
+  aes(x=Family, 
+      y=avg, 
+      # we specify how we want to color the data
+      fill=Depth) +
+  # we set the type of plot we want to make
+  geom_bar(position="dodge", stat="identity") +
+  # add one-sided error bars, set the width, change the position to match the geom_bar position. 
+  geom_errorbar(aes(ymin =avg, ymax=avg+sd), width=0.1,  position=position_dodge(.9)) + 
+  # set a title
+  ggtitle("Average fish counts across different depths") +
+  # set x axis label
+  xlab("Fish Family") +
+  # set y axis label
+  ylab("Average Count") + 
+  # split by Sites
+  facet_grid(~Site) +
+  theme(# Change x-axis label size so that it all fits
+        axis.text.x =element_text(size = 7),   
+        # get rid of the x-axis tick marks
+        axis.ticks.x=element_blank()) +
+  # set specific colors for my groups
+  scale_fill_manual(values=depth_colors)
+
+```
+`ggplot2` has a lot of pre-set `themes` you can use to modify the overall look of your plot. For example, `theme_bw()` for a black and white plot; `theme_minimal()` for a simple plot; and `theme_classic()`. You could set one of these pre-set themes. 
+
+Here, we are also going to save out plot as a variable this time so that we can export it later. 
+```{r}
+pretty_plot <- ggplot(summary) +
+  # then we specify what columns go on the x and y axis. 
+  aes(x=Family, 
+      y=avg, 
+      # we specify how we want to color the data
+      fill=Depth) +
+  # we set the type of plot we want to make
+  geom_bar(position="dodge", stat="identity") +
+  # add one-sided error bars, set the width, change the position to match the geom_bar position. 
+  geom_errorbar(aes(ymin =avg, ymax=avg+sd), width=0.1,  position=position_dodge(.9)) + 
+  # set a title
+  ggtitle("Average fish counts across different depths") +
+  # set x axis label
+  xlab("Fish Family") +
+  # set y axis label
+  ylab("Average Count") + 
+  # split by Sites
+  facet_grid(~Site) +
+  theme(# Change x-axis label size so that it all fits
+        axis.text.x =element_text(size = 6),   
+        # get rid of the x-axis tick marks
+        axis.ticks.x=element_blank()) +
+  # set specific colors for my groups
+  scale_fill_manual(values=depth_colors) +
+  # use a pre-set theme
+  theme_classic()
+
+pretty_plot
+
+```
+Now we want to save our plot in high resolution to submit it for a report, for example. This will automatically go to your working directory folder that we set above. You can change the size and dpi (to increase/decrease resolution) as necessary. 
+```{r}
+# Save as PNG file to your working directory folder. 
+ggsave("pretty_fish_counts.png", pretty_plot, width = 6, height = 4, dpi = 300)
+
+# Specify a different folder...
+# ggsave("~/projects/coral_reefs/pretty_fish_counts.png", pretty_plot, width = 6, height = 4, dpi = 300)
+
+```
+
+
+What about a scatter plot? Since this dataset only has 1 continuous measurement (`Count` - everything else is `categorical`), a scatterplot would be inappropriate.
+
+However, as an example, we can use some pre-loaded data in R called `penguins` to see how we would update the code for continuous measurements. 
+
+```{r}
+# install the dataset - remember, only do this once
+# install.packages("palmerpenguins")
+
+# but load the library every time you use it in R
+library(palmerpenguins)
+data(package = 'palmerpenguins')
+
+View(penguins)
+?palmerpenguins
+
+```
+
+```{r}
+ggplot(penguins, 
+       aes(x=flipper_length_mm, y=bill_length_mm,
+           # we use `color` instead of `fill` for scatterplots
+           color=species,
+           # and change the shape of each point
+           shape=species)) +
+  # use geom_point instead of geom_bar for continuous vars
+  geom_point() +
+  # you could also add a line like this
+  geom_smooth(method="lm")
+```
+You can keep playing with this graph to make it better! Change the axis labels, etc. like we did above. 
+
+## You did it! 
+You've made a graph with R! Now, with this code as your foundation, you could update this with another (cleaned) dataset and make any graph you can imagine (basically!). Remember your Tidy Data principles! 
+
+I would encourage you to first try and change some things in this graph on your own. Change the colors, theme, titles, etc. to make it your own. Then try changing which columns you visualize! Maybe add in the size class component? Once you're comfortable, try to bring in another clean dataset and see what kind of plots you can make. 
+
+If you prefer to Tidy your data in Excel, then go for it! If you want to see how to do this in R, then continue on with the rest of the tutorial. 
+
+
+
+
+
+
+### Cleaning ecological data<a name="clean"></a>
+
+While SCUBA diving for science is great, your job isn't over when the dive ends. Most of the work is still ahead of you! Cleaning up ecological survey data is a critical part of your job as an ecologist. The process will differ for every dataset that you collect or use. This is a true skill, and one that is worth learning more about if you want to work in any field of science! This is not meant to teach you everything, but rather just provide an intro to the tasks. 
+
+
+Let's import a (fake) GCRMN fish data survey datasheet and see how we would clean it. 
+
+```{r message=FALSE}
+# Import an example fish data sheet (replace anything inside quotes with the actual name of the file in your folder). My data is inside a folder called 'Fish_Data', so I include that in my call. 
+fish_load <- read_excel("Fish_Data/GCRMN Fish data sheet analysis.xlsx", col_names=FALSE)
+```
+
+You should see a new variable called `fish_;pad` appear in your Environment panel
+on the upper right hand side of your screen. Click on this variable, and you will
+notice that a new tab opens up so you can look at your data just like a spreadsheet.
+
+Just like in our Excel spreadsheet, we can see we have the survey header information at the top before our data starts on row 6. This is excellent formatting for humans, and not great formatting for computers to work with. Below we will walk through how we could re-format this dataset to create figures, look for data entry errors, and identify any outliers.  
+
+#### **Let's first extract our survey information.**
+The first four lines of our `fish_load` data has survey information that we don't want to lose, so we don't want to just delete it forever. Instead, lets pull out this information to use later.
+```{r, results="markup"}
+# I like to make a copy of the data that I just loaded in to start making edits to. 
+# That way, if I make a mistake, I don't have to re-load everything, I can just start here again. 
+fish <- fish_load
+
+# Step 1:  We will pull out rows 1-4 in a separate object called 'metadata'
+metadata <- fish[1:4, ]
+
+# ... and then remove those same 4 rows using the minus sign. 
+fish <- fish[-(1:5), ]
+
+# Check that this worked! We should see our survey data starting on the first row without the header information.
+head(fish)
+```
+
+We can also look at our new `metadata` object. We will clean this up later, but we know that this data is now safely stored for future use. 
+
+
+```{r, results='markup'}
+head(metadata)
+```
+
+
+#### **Working with columns in R**
+
+Let's dive deeper into our fish data. 
+
+```{r}
+view(fish)
+```
+Something I immediately notice is that the column names aren't very meaningful now. We can get the column names from our `fish` dataframe using the function `colnames(dataframe)`. 
+```{r, results='markup'}
+# Get the current column names
+columns <- colnames(fish)
+# Print them to the screen 
+print('Column names: '); print(columns)
+```
+
+Imagine you just opened up this spreadsheet that was sent to you by a collaborator and you saw these column names.You would just have to make an educated guess about what these data represent. We don't want that! We can rename our columns so that are easy to understand. 
+```{r}
+# Assign meaningful column names to the data - remember, no spaces!
+# Write out the names you want to use for each column in a list separated by commas and using the c() command. 
+col_names <- c("Family_Class", "Transect_1", "Transect_2", "Transect_3", "Transect_4", "Transect_5")
+
+# A sneaky option to rename these without typing Transect_ every time.
+# col_names <- c("Family_Class", paste("Transect_", 1:5, sep = ""))
+
+# We can reset the old, unhelpful column names to our new and improved column names
+colnames(fish) <- col_names
+
+# Check that this worked!
+colnames(fish)
+
+# Remember, you can always look at your data like a spreadsheet to double check that your code did what you meant it to. 
+# view(fish)
+```
+
+#### **Tidy data problem #1: multiple variables are stored in one column**
+
+Remember, each observation (row) should only include **1 piece of information**, but our first column actually has 2 different things in it (Family AND size class). We can separate these out easily using the `separate` function.   
+```{r, warning=FALSE, results='markup'}
+# Separate values in the first column into separate "Family" and "Class" columns following
+# the principles of Tidy data. Because the information is separated by a space, we enter a space in the sep argument. 
+fish <- fish %>%
+  separate(Family_Class, into = c("Family", "Class"), sep = " ", remove = FALSE)
+
+# Double check that this did what you wanted it to! 
+head(fish)
+```
+
+
+```{r}
+# You can remove old columns easily with select
+fish <- fish %>% select(-'Family_Class')
+```
+
+If you want to access information about a specific column in R, you can use the `$`. Let's say we wanted to see the names of all of the fish families in our data. We could use the `unique` function and the `$` to specify our column of interest.  
+```{r, results='markup'}
+# unique(data_frame_name$column_name) to get all of the unique groups that exist in a column. 
+unique(fish$Family)
+```
+
+```{r, results='markup'}
+# Or figure out how many different families we observed by combining `unique` with `length`
+length(unique(fish$Family))
+```
+
+Obviously we know this because that's the data we collected, but imagine you were surveying the entire fish community and had hundreds of families to deal with. You wouldn't want to count them all! 
+
+#### **Tidy data problem #2: column headers are values, not variables**
+Tidy data is typically stored in 'long' format. This is the most efficient way to work with data in R, but we often collect data in 'wide' format (again, remember human vs. computer readability). In long format, *each variable is stored in its own column*. 
+
+Our count data are currently stored across 5 different columns - one for each transect. This means our data is 'wide'. To make it long, we would make a new column that has different levels for each transect. 
+
+Let's reshape this data into a tidy format using the `pivot_longer` function from the `tidyr` package.
+
+```{r, results='markup'}
+# Use the pivot_wider function to reshape the data
+tidy_fish <- fish %>%
+  pivot_longer(cols = starts_with("Transect_"), names_to = "Transect", values_to = "Count")
+
+# check results
+head(tidy_fish)
+
+```
+We can check the dimensions (i.e., the number of rows and columns) to make sure we accomplished what we set out to do. 
+
+```{r, results='markup'}
+# How many rows/columns are in the original data frame?
+nrow(fish); ncol(fish)
+```
+
+```{r, results='markup'}
+# How many rows/columns are in our new, tidy data frame? 
+# Check that this makes sense (number of rows * number of factor levels)
+nrow(tidy_fish); ncol(tidy_fish)
+```
+We've got ourselves a tidy dataset!
+
+#### **Data Manipulation**<a name="manipulation"></a>
+##### **Understanding + Changing Data Types**
+Every object in R has a `data type`, and different functions can only operate on specific `data types`. We'll check the **data type** of each of the variables in our data frame and tell R what they should be. . 
+
+Common data types you will use are: 
+* Character (aka text/strings; unordered)
+* Numeric (aka double)
+* Integer (aka counts/whole numbers)
+* Factor (aka categories)
+* Date and times
+
+
+```{r, results='markup'}
+# View the first few rows of your data
+# head(tidy_fish)
+# or the last few rows
+# tail(tidy_fish)
+
+# A helpful summary of your data
+str(tidy_fish)
+```
+
+From the `str` output, we can see the different data types stored in each of our columns. Here, all of our columns are `chr` or character. To understand what this means, lets try to do a calculation. Let's try and get the average count value from the `Count` column using the `mean` function.  
+
+```{r, results='markup'}
+mean_count <- mean(tidy_fish$Count)
+```
+Uh oh! What happened here? Our warning tells us that the 'argument is not numeric or logical'. This might be confusing, because aren't the counts numbers? Well, yes and no. 
+
+Each column in R contains some kind of data, and each column has a specific **data type**. R does its best to guess the data type when you import it, but you **always** want to check this. 
+
+From our `str(tidy_fish)` output above, we know that R thinks that each of our columns are `characters` (text, strings, etc). You could also look at a specific columns like this:
+
+```{r, results='markup'}
+typeof(tidy_fish$Count)
+```
+
+You can easily change data types using a group of functions that start with 'as'. Lets make our `Count` data numeric.
+
+
+```{r, results='markup'}
+tidy_fish$Count <- as.numeric(tidy_fish$Count)
+
+# Check that Count is now numeric (num) instead of chr
+str(tidy_fish)
+```
+
+You could do this for each column one by one, making all of the transect data numeric. We might want Species data into ordered categories that we could group the rest of the data by.
+
+Or, we can use the function `mutate` to change each Count to numeric, and the Family and class columns to factors (ordered categories). 
+```{r, results='markup'}
+# Convert columns to appropriate types - add the rest of the columns as needed! 
+tidy_fish <- tidy_fish %>%
+  mutate(Family = as.factor(Family),
+         Class = as.factor(Class),
+         Transect = as.factor(Transect),
+         Count = as.numeric(Count))
+
+# check that each column type changed appropriately
+str(tidy_fish)
+```
+
+OK, so now let's try and calculate our average counts again! It should work, right?! 
+```{r, results='markup'}
+mean_count <- mean(tidy_fish$Count)
+mean_count
+```
+
+Not quite...Notice we are getting a print out of NA. Why is that? If we look at our data, we can see that the last row in our `tidy_fish` data (for 'Other') is empty. We need to tell R how we want to handle `NA` values. 
+```{r, results='markup'}
+mean_count <- mean(tidy_fish$Count, na.rm=TRUE)
+mean_count
+```
+Let's assume that an empty value in our spreadsheet is actually supposed to be a 0. We could replace all of the NAs with 0s to avoid this problem. We can again ust `mutate` for this task. 
+```{r}
+# Replace NAs with 0s in the 'Transect 1' column - repeat for other columms as needed
+tidy_fish$Count[is.na(tidy_fish$Count)] <- 0
+```
+
+##### **Calculating new variables** 
+One way we like to look at fish data is based on *fish densities* rather than *fish abundances* (counts). To calculate fish density for a transect, we would divide the counts by the total area that we surveyed. 
+
+```{r}
+# First, let's set our area values
+transect_length = 25
+transect_width = 2
+
+# You can multiply things together using the *
+transect_area = transect_length*transect_width
+
+tidy_fish$Density <- (tidy_fish$Count/transect_area)
+
+```
+
+Now we have a new calculated column called `Density`!
+
+##### **Combining Datasets**
+
+Remember all of that important survey metadata we pulled out after we initially imported the data into R? It's stored in a variable called `metadata`. We can clean this up easily and add it back to our data using the `tidyverse`. Let's look at our `metadata` object to remind ourselves how we need to reformat for Tidy Data. 
+
+```{r, results='markup'}
+metadata
+```
+This is not tidy. Our variables are `Date`, `Site`, `Depth`, and `Data recorded by`, all of which are stored as values in a column. We also have extra columns hanging out (...3, ...4, etc). We can tidy this dataset by: 
+
+1. Keeping only the first two columns using the `select` function; 
+2. Converting our date from long to wide so that the values in column 1 become variable names (columns); 
+3. Using `rbind` to combine two tidy datasets together to add survey metadata to our `tidy_fish` data. 
+
+```{r, results='markup'}
+wide_metadata <- metadata %>%
+  # keep only the the first two columns from the metadata object (drops the rest!)
+  select(...1, ...2) %>%
+  # convert from long to wide format so that values from column 1 become variables with values from column 2
+  pivot_wider(names_from = ...1, values_from = ...2)
+
+# Add the new metadata columns to tidy_fish
+tidy_fish <- tidy_fish %>%
+  bind_cols(wide_metadata) 
+
+# Now, we have a dataset with the same number of observations as before, but with 4 new columns. 
+tidy_fish
+# view(tidy_fish)
+```
+
+If we were just working with 1 spreadsheet at a time, you could also manually add in metadata information for that survey like this: 
+```{r, results='markup'}
+# What if we wanted to add some survey metadata to this dataframe as a new column? 
+# tidy_fish$Depth <- 30
+# tidy_fish$Site <- 'Site Name'
+
+# head(tidy_fish)
+```
+
+Now we know how to **add columns** to our data using `bind_cols`. But what if we wanted to combine multiple (cleaned) survey datasets into one? We can do this easily using `bind_rows`! 
+
+```{r}
+# Example: 
+# create a copy of our tidy data to mimic having a second survey
+tidy_fish_copy <- tidy_fish
+
+combined_surveys <- bind_rows(tidy_fish, tidy_fish_copy)
+```
+
